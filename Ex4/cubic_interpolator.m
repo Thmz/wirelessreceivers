@@ -12,7 +12,7 @@ function [ out ] = cubicinterpolator( f, k, delta )
     
     x = delta;
     xx = [ x^3 x^2 x 1 ].';
-    abcd .* xx;
+    
     out = sum(abcd .* xx);
 end
 
