@@ -1,3 +1,6 @@
+clear
+clc
+
 % Oversampling factor
 os_factor = 4;
 
@@ -15,7 +18,7 @@ data_length = prod(image_size) * 8 / 2; % Number of QPSK data symbols
 antSig = awgn(signal, SNR);
 
 % Create phase noise
-sigmaDeltaTheta = 0.004;
+sigmaDeltaTheta = 0.001;
 phase_noise = zeros(length(signal), 1);
 phase_noise(1) = 2*pi*rand;
 for i = 2:length(phase_noise)
@@ -23,7 +26,7 @@ for i = 2:length(phase_noise)
 end;
 
 % Apply phase noise
-antSig .* exp( - 1i * phase_noise);
+antSig = antSig .* exp( 1i * phase_noise);
 
 % Receiver
 filtered_rx_signal = matched_filter(antSig, os_factor, 6); % 6 is a good value for the one-sided RRC length (i.e. the filter has 13 taps in total)
@@ -61,12 +64,20 @@ for k = 1 : data_length,
             error('Unknown interpolator_type.');
     end
     
-    % Phase estimation    
-    % Apply viterbi-viterbi algorithm
-    theta_hat(k) = 1/4 * angle( - payload_data(k)^4)  +  pi/2 * [1:4]
-  
+    % Phase estimation
+   theta = 1/4 * angle( - payload_data(k)^4)  +  pi/2 * (1:4);
+    
     % Phase correction
-    exp(1i*theta_hat(k))
+   aa = exp(1i*theta);
+   bb = exp(1i*theta_hat(k));
+   dist = (real(aa) - real(bb)).^2 + (imag(aa) - imag(bb)).^2;
+    
+   [M, I] = min(dist);
+   theta_closest = theta(I);
+   theta_hat(k+1) = mod(theta_closest, 2*pi);
+    
+   payload_data(k) = payload_data(k) * exp(-1i * theta_hat(k+1));
+
     
     data_idx = data_idx + os_factor;
 end
@@ -75,7 +86,7 @@ end
 figure(1),
 plot(theta_hat)
 hold on
-plot(theta_n(data_idxInit:os_factor:end), '-r')
+plot(phase_noise(data_idxInit:os_factor:end), '-r')
 a = axis;
 a(3:4) = [0,2*pi];
 axis(a)

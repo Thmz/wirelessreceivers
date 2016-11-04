@@ -34,7 +34,7 @@ for i = L * frame_sync_length + 1 : length(rx_signal)
         if (T > current_peak_value)
             beginning_of_data = i;
             current_peak_value = T;
-            theta = angle(c)
+            theta = angle(c);
         end
         if (samples_after_threshold == 0)
             return;
