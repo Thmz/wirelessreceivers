@@ -25,8 +25,8 @@ symbol2s(1:4:end)   = 1/sqrt(2)*(symbol1d(1:2:end) + 1i*symbol1d(2:2:end));
 
 % Create RRC pulse 
 rolloff_factor = 0.22;
-pulse = rrc(os_factor, rolloff_factor, tx_filterlen);
-
+pulse = rrc(os_factor, rolloff_factor, tx_filterlen)
+plot(pulse)
 % Shape the symbol diracs with pulse
 signal = conv([zeros(1,blank*os_factor) symbol2s zeros(1,blank*os_factor)],pulse.','same');
 

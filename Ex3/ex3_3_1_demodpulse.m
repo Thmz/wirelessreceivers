@@ -15,6 +15,8 @@ os_factor     = 4;  % oversampling factor
 load ./task3.mat
 data_length = prod(image_size) * 8 / 2;
 
+Pa = sum(abs(tx).^2)/length(tx) % calculate signal power
+
 % convert SNR from dB to linear
 SNRlin = 10^(SNR/10);
 

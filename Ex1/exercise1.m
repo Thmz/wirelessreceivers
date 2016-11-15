@@ -15,7 +15,6 @@ for SNR_dB = SNR_values
     % Add noise
     wx = gen_noise(SNR_dB, tx);
     rx = tx + wx; %received signal
-    snr(rx, wx)
     
     % Plot constellation points
     figure('Name', strcat('Constellation points for SNR ', num2str(SNR_dB), ' dB'));

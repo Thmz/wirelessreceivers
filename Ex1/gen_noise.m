@@ -2,7 +2,7 @@ function wx = gen_noise( SNR_dB, tx)
 
 SNR = 10^(SNR_dB/10); % calculate linear SNR
 
-Pa = sum(abs(tx).^2)/length(tx); % calculate signal power
+Pa = sum(abs(tx).^2)/length(tx) % calculate signal power
 
 L=length(tx);
 wx = sqrt(0.5)*(randn(L, 1)+ 1i*randn(L, 1)); 

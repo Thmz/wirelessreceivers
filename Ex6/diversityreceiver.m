@@ -1,9 +1,11 @@
+clear
+clc
 % Oversampling factor
 os_factor = 4;
 
 % SNR
-SNR = 6;
-noAntenna = 3;
+SNR = 3;
+noAntenna = 4;
 
 % transmitter
 load task6_1
@@ -27,17 +29,32 @@ for k=1:noframes
     % Add White Noise
     SNRlin = 10^(SNR/10);
     noiseFrame = chanFrame + 1/sqrt(2*SNRlin)*(randn(size(chanFrame)) + 1i*randn(size(chanFrame)));
-    plot(chanFrame)
-    %
-    % Receiver with Single Antenna
-    %
+
+    
     
     % Matched Filter
+    filtered_rx_signal = zeros(1);
+    data_idx = 0;
+    theta = 0;
+    h = 0;
     
-    filtered_rx_signal = matched_filter(noiseFrame(1,:), os_factor, 6); % 6 is a good value for the one-sided RRC length (i.e. the filter has 13 taps in total)
-
-    % Frame synchronization
-    [data_idx theta magn] = frame_sync(filtered_rx_signal.', os_factor); % Index of the first data symbol
+    for i = 1:noAntenna
+        this_filtered_rx_signal = matched_filter(noiseFrame(i,:), os_factor, 6); % 6 is a good value for the one-sided RRC length (i.e. the filter has 13 taps in total) 
+        % Frame synchronization
+        [this_data_idx, this_theta, this_h] = frame_sync(this_filtered_rx_signal.', os_factor); % Index of the first data symbol
+        
+        % Selects signal with strongest channel
+        if(abs(this_h) > abs(h))
+            h = this_h;
+            theta = this_theta;
+            data_idx = this_data_idx;
+            filtered_rx_signal = this_filtered_rx_signal/this_h;
+        end
+    end
+    
+    if(data_idx == 0)
+        error('No syncronisation sequence found');
+    end
     
     % Pick correct sampling points (no timing error)
     correct_samples = filtered_rx_signal(data_idx:os_factor:data_idx+(symbolsperframe*os_factor)-1);

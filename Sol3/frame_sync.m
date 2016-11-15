@@ -1,4 +1,4 @@
-
+<
 function beginning_of_data = frame_sync(rx_signal, L)
 
 % Frame synchronizer.

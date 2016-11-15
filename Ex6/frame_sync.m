@@ -1,4 +1,4 @@
-function [beginning_of_data phase_of_peak magn] = frame_sync(rx_signal, L)
+function [beginning_of_data phase_of_peak h] = frame_sync(rx_signal, L)
 
 % Frame synchronizer.
 % rx_signal is the noisy received signal, and L is the oversampling factor (L=1 in chapter 2, L=4 in all later chapters).
@@ -9,7 +9,7 @@ if (rx_signal(1) == 0),
     
 end
 
-detection_threshold = 15;
+detection_threshold = 20;
 frame_sync_length = 256;
 
 % Calculate the frame synchronization sequence and map it to BPSK: 0 -> +1, 1 -> -1
@@ -34,6 +34,8 @@ for i = L * frame_sync_length + 1 : length(rx_signal)
             beginning_of_data = i;
             phase_of_peak = mod(angle(c),2*pi);
             current_peak_value = T;
+            %plot(r, '.');
+            h = mean( r./frame_sync_sequence ); % estimate  channel : 
         end
         if (samples_after_threshold == 0)
             return;
@@ -42,5 +44,9 @@ for i = L * frame_sync_length + 1 : length(rx_signal)
     
 end
 
-error('No synchronization sequence found.');
+% If no beginning found, output all zeros and process it in the main
+% function
+beginning_of_data = 0;
+phase_of_peak = 0;
+h= 0;
 return

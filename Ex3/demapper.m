@@ -9,5 +9,5 @@ b = [real(a) imag(a)] > 0;
 b = b.';
 b = b(:);
 
-b = double(b); % Convert data type from logical to double
+rxbi = double(b); % Convert data type from logical to double
 end

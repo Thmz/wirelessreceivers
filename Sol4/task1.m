@@ -1,10 +1,11 @@
-%clear all
-%close all
-%clc
+clear all
+close all
+clc
 
 % Set parameters
 SNR = 10;
 os_factor = 4;
+
 
 % Load image file
 load task4.mat
@@ -14,8 +15,10 @@ data_length = prod(image_size) * 8 / 2; % Number of QPSK data symbols
 % Matched filter
 filtered_rx_signal = matched_filter(awgn(signal, SNR), os_factor, 6); % 6 is a good value for the one-sided RRC length (i.e. the filter has 13 taps in total)
 
+filtered_rx_signal = [0; 0; filtered_rx_signal];
+
 % Frame synchronization
-data_idx = frame_sync(filtered_rx_signal, os_factor); % Index of the first data symbol
+data_idx = frame_sync(filtered_rx_signal, os_factor) % Index of the first data symbol
 
 data = zeros(1,data_length);
 data2 = zeros(1,data_length);
