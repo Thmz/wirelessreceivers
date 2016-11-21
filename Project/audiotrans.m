@@ -14,11 +14,12 @@
 conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
 conf.f_s     = 48000;   % sampling rate  
-conf.f_sym   = 100;     % symbol rate
+conf.f_sym   = 200;     % symbol rate
 conf.nframes = 1;       % number of frames to transmit
-conf.nbits   = 200;    % number of bits 
-conf.modulation_order = 2; % BPSK:1, QPSK:2
+conf.nbits   = 1000;    % number of bits 
+conf.modulation_order = 1; % BPSK:1, QPSK:2
 conf.f_c     = 4000;
+conf.modulation = 'QPSK';
 
 conf.npreamble  = 100;
 conf.bitsps     = 16;   % bits per audio sample
@@ -49,7 +50,7 @@ for k=1:conf.nframes
     txbits = randi([0 1],conf.nbits,1);
     
     % TODO: Implement tx() Transmit Function
-    [txsignal conf] = tx(txbits,conf,k);
+    [txsignal, conf] = tx(txbits,conf,k);
     
     % % % % % % % % % % % %
     % Begin
@@ -122,10 +123,11 @@ for k=1:conf.nframes
     % Audio Transmission   
     % % % % % % % % % % % %
     
-    % TODO: Implement rx() Receive Function
-    [rxbits conf]       = rx(rxsignal,conf);
+    [rxbits, conf]       = rx(rxsignal,conf);
     
     res.rxnbits(k)      = length(rxbits);  
+    length(rxbits)
+    length(txbits)
     res.biterrors(k)    = sum(rxbits ~= txbits);
     
 end

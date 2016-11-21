@@ -18,9 +18,8 @@ function [txsignal conf] = tx(txbits,conf,k)
 %time = 1:1/conf.f_s:4;
 %txsignal = 0.3*sin(2*pi*400 * time.');
 
-txbits = [lfsr_framesync(100); txbits];
-tx = -(txbits *2  - 1); 
-
+framesync_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
+tx = [zeros(100, 1); framesync_bpsk; mapper(txbits, conf.modulation)];
 
 %oversample
 tx = upsample(tx, conf.os_factor);
@@ -33,7 +32,6 @@ pulse = rrc(conf.os_factor, rolloff_factor, tx_filterlen);
 % Shape the symbol diracs with pulse
 txsignal = conv(tx, pulse.','same');
 
+% Upconvert
 time = 1:1/conf.f_s:1+ (length(txsignal) -1)/conf.f_s;
-length(txsignal)
-length(time)
 txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));
