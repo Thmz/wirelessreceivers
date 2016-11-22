@@ -12,25 +12,25 @@ clc
 %       - ALSA audio tools, most Linux distrubtions
 %       - builtin WAV tools on Windows 
 %   - 'bypass' : no audio transmission, takes txsignal as received signal
-
-%fsym = [100,400,800,1600,2000,2400,3000]%100:600:2000
-%for jj = 1:length(fsym);
+fsym = [100,400,800,1600,2000,2400,3000]%100:600:2000
+for jj = 1:length(fsym);
 
     % Configuration Values
     conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
     conf.f_s     = 48000;   % sampling rate  
-    conf.f_sym   = 400;     % symbol rate
+    conf.f_sym   = fsym(jj);     % symbol rate
     conf.nframes = 1;       % number of frames to transmit
     conf.nbits   = 1000;    % number of bits 
-    conf.modulation_order = 2; % BPSK:1, QPSK:2
+    conf.modulation_order = 1; % BPSK:1, QPSK:2
     conf.f_c     = 4000;
-    
+    conf.modulation = 'QPSK';
+
     conf.npreamble  = 100;
     conf.bitsps     = 16;   % bits per audio sample
-    conf.offset     = 0;
+    conf.offset     = 1;
     
-    conf.data_length = conf.nbits/conf.modulation_order;
+    
 
     % Init Section
     % all calculations that you only have to do once
@@ -77,7 +77,7 @@ clc
         rawtxsignal = [  rawtxsignal  zeros(size(rawtxsignal)) ]; % add second channel: no signal
         txdur       = length(rawtxsignal)/conf.f_s; % calculate length of transmitted signal
 
-        % wavwrite(rawtxsignal,conf.f_s,16,'out.wav')   
+    %     wavwrite(rawtxsignal,conf.f_s,16,'out.wav')   
         audiowrite('out.wav',rawtxsignal,conf.f_s)  
 
         % Platform native audio mode 
@@ -143,13 +143,13 @@ clc
 
     end
 
-   per = sum(res.biterrors > 0)/conf.nframes
-   ber = sum(res.biterrors)/sum(res.rxnbits)+0.000000000001
+    per(jj) = sum(res.biterrors > 0)/conf.nframes
+    ber(jj) = sum(res.biterrors)/sum(res.rxnbits)+0.000000000001
 
-%end
-% 
-% figure('Name', 'BER');
-% semilogy(fsym, ber);
-% xlabel('Symbol rate');
-% ylabel('BER [%]');
-% title('BER');
+end
+
+figure('Name', 'BER');
+semilogy(fsym, ber);
+xlabel('Symbol rate');
+ylabel('BER [%]');
+title('BER');

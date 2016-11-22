@@ -13,31 +13,22 @@ function [rxbits conf] = rx(rxsignal,conf,k)
 %   rxbits      : received bits
 %   conf        : configuration structure
 
-
 % Downconvert
 time = 1:1/conf.f_s:1+(length(rxsignal)-1)/conf.f_s;
-rxsignal = rxsignal .* exp(-1j*2*pi*conf.f_c * time.');
+rxsignal = rxsignal .* exp(-1j*2*pi*(conf.f_c + conf.offset) * time.');
 rxsignal = lowpass(rxsignal, conf);
 
-% Get datalength, depends on modulation type
-switch(conf.modulation)
-    case 'BSPK'
-        data_length = conf.nbits;
-    case 'QPSK'
-        data_length = conf.nbits/2;
-end;
-
-% Receiver
-filtered_rx_signal = matched_filter(rxsignal, conf.os_factor, 6); % 6 is a good value for the one-sided RRC length (i.e. the filter has 13 taps in total)
+% Receiver pulse shaping
+filtered_rx_signal = conv(rxsignal, conf.h.','same');
 
 % Frame synchronization
 [data_idx, theta] = frame_sync(filtered_rx_signal, conf.os_factor) % Index of the first data symbol
-payload_data = zeros(data_length, 1); % The payload data symbols
-theta_hat = zeros(data_length, 1);   % Estimate of the carrier phase
+payload_data = zeros(conf.data_length, 1); % The payload data symbols
+theta_hat = zeros(conf.data_length, 1);   % Estimate of the carrier phase
 theta_hat(1) = theta;
 
 % Loop over the data symbols with estimation and correction of phase
-for k = 1 : data_length,
+for k = 1 : conf.data_length,
 
     % No time estimation needed due to very high oversampling factor.
     % Preamble detection will do sufficient time alignment
@@ -63,4 +54,4 @@ for k = 1 : data_length,
 end
 
 % Demap
-rxbits = demapper(payload_data,conf.modulation);
+rxbits = demapper(payload_data,conf.modulation_order);

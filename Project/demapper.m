@@ -1,9 +1,9 @@
 function [rxbits] = demapper(rx, modulation)
 
 switch modulation
-    case 'BPSK'
+    case 1 % BPSK
         rxbits = 1-(rx > 0);
-    case 'QPSK'
+    case 2 % QPSK
         
         % Convert noisy QPSK symbols into a bit vector. Hard decisions.
         
