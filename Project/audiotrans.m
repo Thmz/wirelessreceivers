@@ -13,14 +13,14 @@ clc
 %       - builtin WAV tools on Windows 
 %   - 'bypass' : no audio transmission, takes txsignal as received signal
 
-%fsym = [100,400,800,1600,2000,2400,3000]%100:600:2000
-%for jj = 1:length(fsym);
+fsym = [100,400,800,1200,1600,2000,]%100:600:2000
+for jj = 1:length(fsym);
 
     % Configuration Values
     conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
     conf.f_s     = 48000;   % sampling rate  
-    conf.f_sym   = 400;     % symbol rate
+    conf.f_sym   = fsym(jj);     % symbol rate
     conf.nframes = 1;       % number of frames to transmit
     conf.nbits   = 1000;    % number of bits 
     conf.modulation_order = 2; % BPSK:1, QPSK:2
@@ -28,7 +28,7 @@ clc
     
     conf.npreamble  = 100;
     conf.bitsps     = 16;   % bits per audio sample
-    conf.offset     = 0;
+    conf.offset     = 0.5;
     
     conf.data_length = conf.nbits/conf.modulation_order;
 
@@ -50,6 +50,7 @@ clc
     tx_filterlen = 10;
     rolloff_factor = 0.22;
     conf.h = rrc(conf.os_factor, rolloff_factor, conf.os_factor*tx_filterlen);
+    plot(conf.h)
 
 
     % Results
@@ -143,13 +144,13 @@ clc
 
     end
 
-   per = sum(res.biterrors > 0)/conf.nframes
-   ber = sum(res.biterrors)/sum(res.rxnbits)+0.000000000001
+   per(jj) = sum(res.biterrors > 0)/conf.nframes
+   ber(jj) = sum(res.biterrors)/sum(res.rxnbits)+0.000000000001
 
-%end
-% 
-% figure('Name', 'BER');
-% semilogy(fsym, ber);
-% xlabel('Symbol rate');
-% ylabel('BER [%]');
-% title('BER');
+end
+ 
+ figure('Name', 'BER');
+ semilogy(fsym, ber);
+ xlabel('Symbol rate');
+ ylabel('BER [%]');
+ title('BER with time offset at receiver equal to 0.5Hz');
