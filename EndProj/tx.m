@@ -13,23 +13,22 @@ function [txsignal conf] = tx(txbits,conf,k)
 %   k       : Frame index
 %
 
-%% TODO preamble?
+%% preamble
+%preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
+% TODo: preamble moet pulse shaping krijgen, geen lowpass
 
-%% Conver to QPSK
-tx = mapper(txbits, conf.modulation_order);
+%% Convert to QPSK
+tx = mapper(txbits, 2);
 
 %% Convert to parallel
 n_samples = ceil(length(tx)/conf.n_carriers)
 
+% Change into vector that is multiple of number of carreirs
 txzeros = zeros(1, conf.n_carriers*n_samples);
 txzeros(1:length(tx)) = tx;
 
-a = zeros(conf.n_carriers, n_samples); % Matrix with OFDM symbols
-% TODO beter met reshape https://www.mathworks.com/matlabcentral/answers/64801-how-to-convert-binary-data-from-serial-to-parallel
+a = reshape(txzeros, [conf.n_carriers, n_samples]); % Matrix with OFDM symbols
 
-for i = 1:n_samples
-    a(:, i) = txzeros((i-1)*conf.n_carriers+1: i*conf.n_carriers);
-end
 
 %% Convert with IDFT operation
 ttt =  conf.n_carriers * conf.os_factor;
@@ -42,10 +41,18 @@ end
 %% Convert to serial
 s = s(:);
 
+%% Apply low pass
+% Lowpass werkt niet
+%s = lowpass(s, conf);
 
-%%%%% RECEIVER
+
+
 
 r = s;
+
+
+
+%%%%% RECEIVER
 
 %% Serial to parallel
 symbol_length = (1+conf.cpref_length)*conf.n_carriers*conf.os_factor;
