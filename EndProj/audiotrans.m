@@ -17,13 +17,13 @@ clc
 %for jj = 1:length(fsym);
 
     % Configuration Values
-    conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
+    conf.audiosystem = 'bypass'; % Values: 'matlab','native','bypass'
 
-    conf.n_carriers  = 256; % Number of OFDM carriers
-    conf.f_s     = 48000;   % sampling rate  
-    conf.f_spacing = 5; % In hz
+    conf.n_carriers  = 256; % Number of OFDM carriers, N
+    conf.f_s     = 48000;   % sampling rate, f_sampling = N/T with T the OFDM symbol length without prefix? 
+    conf.f_spacing = 5; % In hz, f_spacing = 1/T, with T defined as above
     conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
-    conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_sym;
+    conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
     conf.nframes = 1;       % number of frames to transmit
     conf.nbits   = 1000;    % number of bits 
     conf.modulation_order = 2; % BPSK:1, QPSK:2
@@ -42,7 +42,7 @@ clc
 
     % Init Section
     % all calculations that you only have to do once
-    conf.os_factor  = conf.f_s/conf.f_sym;
+    conf.os_factor  = conf.f_s/conf.f_spacing;
     if mod(conf.os_factor,1) ~= 0
        disp('WARNING: Sampling rate must be a multiple of the symbol rate'); 
     end
@@ -58,7 +58,6 @@ clc
     tx_filterlen = 10;
     rolloff_factor = 0.22;
     conf.h = rrc(conf.os_factor, rolloff_factor, conf.os_factor*tx_filterlen);
-    plot(conf.h)
 
 
     % Results
@@ -71,8 +70,6 @@ clc
         %txbits = ones(conf.nbits, 1);
         % TODO: Implement tx() Transmit Function
         [txsignal, conf] = tx(txbits,conf,k);
-
-        error('end of code')
         
         % % % % % % % % % % % %
         % Begin
@@ -155,8 +152,8 @@ clc
 
     end
 
-   per(jj) = sum(res.biterrors > 0)/conf.nframes
-   ber(jj) = sum(res.biterrors)/sum(res.rxnbits)+0.000000000001
+   per = sum(res.biterrors > 0)/conf.nframes
+   ber = sum(res.biterrors)/sum(res.rxnbits)
 
 %end
  

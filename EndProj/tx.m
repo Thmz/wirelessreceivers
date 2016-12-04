@@ -13,78 +13,50 @@ function [txsignal conf] = tx(txbits,conf,k)
 %   k       : Frame index
 %
 
-%% preamble
-%preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
-% TODo: preamble moet pulse shaping krijgen, geen lowpass
-
 %% Convert to QPSK
 tx = mapper(txbits, 2);
+% length(tx) is in conf.data_length
+
 
 %% Convert to parallel
-n_samples = ceil(length(tx)/conf.n_carriers)
+n_symbols = ceil(conf.data_length/conf.n_carriers) % total number of OFDM symbols
 
-% Change into vector that is multiple of number of carreirs
-txzeros = zeros(1, conf.n_carriers*n_samples);
+% Change into vector that is multiple of number of carriers
+% TODO kan mss beter met reshape
+txzeros = zeros(1, conf.n_carriers*n_symbols);
 txzeros(1:length(tx)) = tx;
 
-a = reshape(txzeros, [conf.n_carriers, n_samples]); % Matrix with OFDM symbols
-
+txmatrix = reshape(txzeros, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
-ttt =  conf.n_carriers * conf.os_factor;
-s = zeros((1+conf.cpref_length) * (ttt), n_samples);
-for i = 1:n_samples
-   ifft = osifft(a(:, i), conf.os_factor);
-   s(:, i) = [ifft(end - conf.cpref_length*ttt+1: end); ifft]; % immediately insert cyclic prefix
+% and add cyclic prefix
+symbol_length =  conf.n_carriers * conf.os_factor;
+s = zeros( (1+conf.cpref_length) * symbol_length, n_symbols);
+for i = 1:n_symbols
+   fttt = osifft(txmatrix(:, i), conf.os_factor);
+   cpref = fttt(end - conf.cpref_length*symbol_length+1: end);
+   s(:, i) = [cpref; fttt];
 end
 
 %% Convert to serial
 s = s(:);
 
 %% Apply low pass
-% Lowpass werkt niet
-%s = lowpass(s, conf);
+corner_f = conf.n_carriers * conf.f_spacing %TODO conf.f_bw? geeft struct error ofzoiets en is te laag (BER stijgt)
+s = ofdmlowpass(s, conf, corner_f);
 
+%% Preamble
+% Preamble: pulse shaping but no lowpass
+preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
+preamble_up = upsample(preamble_bpsk, conf.os_factor);
+preamble_shaped = conv(preamble_up, conf.h.','same');
 
+%% Get signal
+txsignal = [ preamble_shaped; s];
 
+%% TODO upconvert to carrier freq
 
-r = s;
-
-
-
-%%%%% RECEIVER
-
-%% Serial to parallel
-symbol_length = (1+conf.cpref_length)*conf.n_carriers*conf.os_factor;
-n_samples = floor(length(r)/symbol_length);
-rx = reshape(r, [ symbol_length  n_samples]);
-
-%% Delete cyclic prefix
-rx = rx(conf.cpref_length*conf.n_carriers*conf.os_factor+1: end, :);
-
-%% FFT
-rxs = zeros(conf.n_carriers, n_samples);
-for i = 1:n_samples
-   rxs(:, i) = osfft(rx(:,i), conf.os_factor);
-end
-
-
-%% Serial
-rxs = rxs(:);
-
-%% Demap
-rxbits = demapper(rxs, 2); % DEMAP QPSK
-
-
-
-
-
-
-
-
-
-error ('stop here')
-% 
+% Old TX
 % 
 % 
 % 

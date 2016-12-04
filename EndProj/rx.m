@@ -1,18 +1,55 @@
-% function [rxbits conf] = rx(rxsignal,conf,k)
-% % Digital Receiver
-% %
-% %   [txsignal conf] = tx(txbits,conf,k) implements a complete causal
-% %   receiver in digital domain.
-% %
-% %   rxsignal    : received signal
-% %   conf        : configuration structure
-% %   k           : frame index
-% %
-% %   Outputs
-% %
-% %   rxbits      : received bits
-% %   conf        : configuration structure
-% 
+ function [rxbits conf] = rx(rxsignal,conf,k)
+% Digital Receiver
+%
+%   [txsignal conf] = tx(txbits,conf,k) implements a complete causal
+%   receiver in digital domain.
+%
+%   rxsignal    : received signal
+%   conf        : configuration structure
+%   k           : frame index
+%
+%   Outputs
+%
+%   rxbits      : received bits
+%   conf        : configuration structure
+
+
+%% Frame syncé
+[data_idx, theta] = frame_sync(rxsignal, conf.os_factor) % Index of the first data symbol
+
+symbol_length = conf.n_carriers*conf.os_factor
+n_symbols = ceil(conf.data_length/conf.n_carriers)
+signal_length = (1+conf.cpref_length)*symbol_length*n_symbols % length of total signal
+
+rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbols
+
+
+%% Serial to parallel
+rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*symbol_length  n_symbols]);
+
+%% Delete cyclic prefix
+rxmatrix = rxmatrix(conf.cpref_length*conf.n_carriers*conf.os_factor+1: end, :);
+%% FFT
+rx = zeros(conf.n_carriers, n_symbols);
+for i = 1:n_symbols
+   rx(:, i) = osfft(rxmatrix(:,i), conf.os_factor);
+end
+
+%% Serial
+rx = rx(:);
+
+%% Delete unnecessary zeros at the end
+rx = rx(1:conf.data_length);
+
+%% Demap
+rxbits = demapper(rx, 2);
+
+
+
+
+
+%% OLD
+
 % % Downconvert
 % time = 1:1/conf.f_s:1+(length(rxsignal)-1)/conf.f_s;
 % rxsignal = rxsignal .* exp(-1j*2*pi*(conf.f_c + conf.offset) * time.');
