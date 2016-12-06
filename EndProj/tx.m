@@ -17,20 +17,20 @@ function [txsignal conf] = tx(txbits,conf,k)
 tx = mapper(txbits, 2);
 % length(tx) is in conf.data_length
 
-
 %% Convert to parallel
-n_symbols = ceil(conf.data_length/conf.n_carriers) % total number of OFDM symbols
+n_symbols = ceil(conf.data_length/conf.n_carriers); % total number of OFDM symbols
+disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)])
 
 % Change into vector that is multiple of number of carriers
-% TODO kan mss beter met reshape
 txzeros = zeros(1, conf.n_carriers*n_symbols);
 txzeros(1:length(tx)) = tx;
-
 txmatrix = reshape(txzeros, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
 % and add cyclic prefix
 symbol_length =  conf.n_carriers * conf.os_factor;
+disp(['SYMBOL LENGTH ' num2str(symbol_length)])
+
 s = zeros( (1+conf.cpref_length) * symbol_length, n_symbols);
 for i = 1:n_symbols
    fttt = osifft(txmatrix(:, i), conf.os_factor);
@@ -39,11 +39,14 @@ for i = 1:n_symbols
 end
 
 %% Convert to serial
-s = s(:);
+s = s(:)*1000;
 
 %% Apply low pass
-corner_f = conf.n_carriers * conf.f_spacing %TODO conf.f_bw? geeft struct error ofzoiets en is te laag (BER stijgt)
-s = ofdmlowpass(s, conf, corner_f);
+corner_f = conf.f_bw*2;
+disp(['LPF CORNER FREQ ' num2str(corner_f)])
+%s = ofdmlowpass(s, conf, corner_f);
+
+disp(['LENGTH TX SIGNAL WITHOUT PREAMBLE ' num2str(length(s))])
 
 %% Preamble
 % Preamble: pulse shaping but no lowpass
@@ -53,6 +56,13 @@ preamble_shaped = conv(preamble_up, conf.h.','same');
 
 %% Get signal
 txsignal = [ preamble_shaped; s];
+
+disp(['LENGTH TX SIGNAL WITH PREAMBLE ' num2str(length(txsignal))])
+
+%% Upconvert
+time = 0:1/conf.f_s: (length(txsignal) -1)/conf.f_s;
+txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));
+
 
 %% TODO upconvert to carrier freq
 

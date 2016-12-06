@@ -17,17 +17,18 @@ clc
 %for jj = 1:length(fsym);
 
     % Configuration Values
-    conf.audiosystem = 'bypass'; % Values: 'matlab','native','bypass'
+    conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
-    conf.n_carriers  = 256; % Number of OFDM carriers, N
+    conf.n_carriers  = 240; % Number of OFDM carriers, N
     conf.f_s     = 48000;   % sampling rate, f_sampling = N/T with T the OFDM symbol length without prefix? 
     conf.f_spacing = 5; % In hz, f_spacing = 1/T, with T defined as above
-    conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
+   % conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
     conf.nframes = 1;       % number of frames to transmit
     conf.nbits   = 1000;    % number of bits 
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 4000;
+    conf.offset = 0;
     
    
     
@@ -42,7 +43,7 @@ clc
 
     % Init Section
     % all calculations that you only have to do once
-    conf.os_factor  = conf.f_s/conf.f_spacing;
+    conf.os_factor  = conf.f_s/(conf.f_spacing*conf.n_carriers);
     if mod(conf.os_factor,1) ~= 0
        disp('WARNING: Sampling rate must be a multiple of the symbol rate'); 
     end
@@ -84,7 +85,7 @@ clc
         % create vector for transmission
         rawtxsignal = [ zeros(conf.f_s,1) ; normtxsignal ;  zeros(conf.f_s,1) ]; % add padding before and after the signal
         rawtxsignal = [  rawtxsignal  zeros(size(rawtxsignal)) ]; % add second channel: no signal
-        txdur       = length(rawtxsignal)/conf.f_s; % calculate length of transmitted signal
+        txdur       = length(rawtxsignal)/conf.f_s % calculate length of transmitted signal
 
         % wavwrite(rawtxsignal,conf.f_s,16,'out.wav')   
         audiowrite('out.wav',rawtxsignal,conf.f_s)  
@@ -145,9 +146,7 @@ clc
 
         [rxbits, conf]       = rx(rxsignal,conf);
 
-        res.rxnbits(k)      = length(rxbits);  
-        length(rxbits)
-        length(txbits)
+        res.rxnbits(k)      = length(rxbits);
         res.biterrors(k)    = sum(rxbits ~= txbits);
 
     end

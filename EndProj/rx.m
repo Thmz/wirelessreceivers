@@ -13,13 +13,29 @@
 %   rxbits      : received bits
 %   conf        : configuration structure
 
+disp('****** START RX ******')
+
+
+
+% Downconvert
+time = 1:1/conf.f_s:1+(length(rxsignal)-1)/conf.f_s;
+rxsignal = rxsignal .* exp(-1j*2*pi*(conf.f_c + conf.offset) * time.');
+corner_f = conf.f_bw*2; % TODO *2 is te hoog wss
+disp(['LPF CORNER FREQ ' num2str(corner_f)]);
+rxsignal = ofdmlowpass(rxsignal, conf, corner_f);
 
 %% Frame syncé
-[data_idx, theta] = frame_sync(rxsignal, conf.os_factor) % Index of the first data symbol
+[data_idx, theta] = frame_sync(rxsignal, conf.os_factor); % Index of the first data symbol
+disp(['DATA IDX ' num2str(data_idx)]);
 
-symbol_length = conf.n_carriers*conf.os_factor
-n_symbols = ceil(conf.data_length/conf.n_carriers)
-signal_length = (1+conf.cpref_length)*symbol_length*n_symbols % length of total signal
+
+symbol_length = conf.n_carriers*conf.os_factor;
+n_symbols = ceil(conf.data_length/conf.n_carriers);
+signal_length = (1+conf.cpref_length)*symbol_length*n_symbols; % length of total signal
+
+disp(['SYMBOL LENGTH WITHOUT PREFIX ' num2str(symbol_length)]);
+disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)]);
+disp(['EXPECTED SIGNAL LENGTH ' num2str(signal_length)]);
 
 rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbols
 
@@ -29,11 +45,15 @@ rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*symbol_length  n_symbols]);
 
 %% Delete cyclic prefix
 rxmatrix = rxmatrix(conf.cpref_length*conf.n_carriers*conf.os_factor+1: end, :);
+
+
 %% FFT
 rx = zeros(conf.n_carriers, n_symbols);
 for i = 1:n_symbols
    rx(:, i) = osfft(rxmatrix(:,i), conf.os_factor);
 end
+
+
 
 %% Serial
 rx = rx(:);
