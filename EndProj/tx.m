@@ -22,9 +22,10 @@ n_symbols = ceil(conf.data_length/conf.n_carriers); % total number of OFDM symbo
 disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)])
 
 % Change into vector that is multiple of number of carriers
-txzeros = zeros(1, conf.n_carriers*n_symbols);
-txzeros(1:length(tx)) = tx;
-txmatrix = reshape(txzeros, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
+txsymbols = randi([0 1],1, conf.n_carriers*n_symbols*2);
+txsymbols = mapper(txsymbols, 2);
+txsymbols(1:length(tx)) = tx;
+txmatrix = reshape(txsymbols, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
 % and add cyclic prefix
@@ -39,7 +40,7 @@ for i = 1:n_symbols
 end
 
 %% Convert to serial
-s = s(:)*1000;
+s = s(:);
 
 %% Apply low pass
 corner_f = conf.f_bw*2;
@@ -54,9 +55,11 @@ preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
 preamble_up = upsample(preamble_bpsk, conf.os_factor);
 preamble_shaped = conv(preamble_up, conf.h.','same');
 
-%% Get signal
-txsignal = [ preamble_shaped; s];
 
+%% Get signal
+normp = mean(abs(preamble_shaped).^2);
+norms = mean(abs(s).^2);
+txsignal = [ preamble_shaped /sqrt(normp); s/sqrt(norms)];
 disp(['LENGTH TX SIGNAL WITH PREAMBLE ' num2str(length(txsignal))])
 
 %% Upconvert
