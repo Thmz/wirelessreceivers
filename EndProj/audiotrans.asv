@@ -17,7 +17,7 @@ clc
 %for jj = 1:length(fsym);
 
     % Configuration Values
-    conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
+    conf.audiosystem = 'bypas'; % Values: 'matlab','native','bypass'
 
     conf.n_carriers  = 240; % Number of OFDM carriers, N
     conf.f_s     = 48000;   % sampling rate, f_sampling = N/T with T the OFDM symbol length without prefix? 
@@ -25,7 +25,7 @@ clc
    % conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
     conf.nframes = 1;       % number of frames to transmit
-    conf.nbits   = 960;    % number of bits 
+    conf.nbits   = 480;    % number of bits 
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 8000;
     conf.offset = 0;
@@ -42,7 +42,7 @@ clc
 
     % Init Section
     % all calculations that you only have to do once
-    conf.os_factor  = conf.f_s/(conf.f_spacing*conf.n_carriers); %os factor for OSIFFT & IFFT also used for preamble
+    conf.os_factor  = conf.f_s/(conf.f_spacing*conf.n_carriers); %os factor for OSIFFT & IFFT
     if mod(conf.os_factor,1) ~= 0
        disp('WARNING: Sampling rate must be a multiple of the symbol rate'); 
     end
@@ -57,7 +57,9 @@ clc
     % Create RRC pulse
     tx_filterlen = 10;
     rolloff_factor = 0.22;
-    conf.h = rrc(conf.os_factor, rolloff_factor, conf.os_factor*tx_filterlen);
+   conf.h = rrc(conf.os_factor, rolloff_factor, conf.os_factor*tx_filterlen);
+  % conf.h = rrc(400, rolloff_factor, 400*tx_filterlen);
+
 
 
     % Results

@@ -41,7 +41,8 @@ disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)]);
 disp(['EXPECTED SIGNAL LENGTH ' num2str(signal_length)]);
 
 rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbols
-
+normrxs = mean(abs(rxsignal).^2);
+rxsignal =rxsignal/sqrt(normrxs);
 
 
 
@@ -61,9 +62,9 @@ end
 
 
 %% Serial
-rx = rx(:);
+rx = rx(:)
 
-%% Delete unnecessary data at the end
+%% Delete unnecessary zeros at the end
 rx = rx(1:conf.data_length);
 
 %% Demap

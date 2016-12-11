@@ -18,3 +18,4 @@ YL = fft(X);
 
 Y(1:center)        = YL(end-center+1:end);
 Y(center+1:end)    = YL(1:(N-center));
+sizeY = size(Y)

@@ -12,5 +12,4 @@ center = ceil(N/2);
 
 XL(1:(N-center))     = X(center+1:end);
 XL(end-center+1:end) = X(1:center);
-
 Y = ifft(XL);
