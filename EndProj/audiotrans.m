@@ -19,18 +19,17 @@ clc
     % Configuration Values
     conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
-    conf.n_carriers  = 240; % Number of OFDM carriers, N
+    conf.n_carriers  = 256; % Number of OFDM carriers, multiple of 2 for efficient FFT implementation
     conf.f_s     = 48000;   % sampling rate, f_sampling = N/T with T the OFDM symbol length without prefix? 
     conf.f_spacing = 5; % In hz, f_spacing = 1/T, with T defined as above
+    conf.os_factor  = ceil(conf.f_s/(conf.f_spacing*conf.n_carriers)); %os factor for OSIFFT & IFFT also used for preamble
+    conf.f_spacing = conf.f_s/( conf.os_factor*conf.n_carriers)
    % conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
     conf.nframes = 1;       % number of frames to transmit
-    conf.nbits   = 960;    % number of bits 
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 8000;
     conf.offset = 0;
-    
-   
     
     % f_spacing must be divisor of f_sampling
     
@@ -42,7 +41,6 @@ clc
 
     % Init Section
     % all calculations that you only have to do once
-    conf.os_factor  = conf.f_s/(conf.f_spacing*conf.n_carriers); %os factor for OSIFFT & IFFT also used for preamble
     if mod(conf.os_factor,1) ~= 0
        disp('WARNING: Sampling rate must be a multiple of the symbol rate'); 
     end

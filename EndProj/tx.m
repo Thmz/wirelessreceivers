@@ -18,13 +18,21 @@ tx = mapper(txbits, 2);
 % length(tx) is in conf.data_length
 
 %% Convert to parallel
-n_symbols = ceil(conf.data_length/conf.n_carriers); % total number of OFDM symbols
+n_symbols = ceil(conf.data_length/conf.n_carriers)+1; % total number of OFDM symbols
 disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)])
 
+%% Training symbols
+% A training symbol for each sub carrier frequency based on lfsr
+training_symbols = (1 - 2 * lfsr_framesync(conf.n_carriers));
+
+%%
 % Change into vector that is multiple of number of carriers
 txsymbols = randi([0 1],1, conf.n_carriers*n_symbols*2);
 txsymbols = mapper(txsymbols, 2);
-txsymbols(1:length(tx)) = tx;
+size1 = size(txsymbols(1:length(tx)+conf.n_carriers))
+size2 = size([training_symbols ;tx])
+
+txsymbols(1:length(tx)+conf.n_carriers) = [training_symbols ;tx];
 txmatrix = reshape(txsymbols, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
@@ -54,7 +62,6 @@ disp(['LENGTH TX SIGNAL WITHOUT PREAMBLE ' num2str(length(s))])
 preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
 preamble_up = upsample(preamble_bpsk, conf.os_factor);
 preamble_shaped = conv(preamble_up, conf.h.','same');
-
 
 %% Get signal
 normp = mean(abs(preamble_shaped).^2);

@@ -26,14 +26,14 @@ rxsignal = ofdmlowpass(rxsignal, conf, corner_f);
 
 
 
-%% Frame syncé
+%% Frame sync
 [data_idx, theta] = frame_sync(rxsignal, conf.os_factor); % Index of the first data symbol
 %[data_idx, theta] = frame_sync(rxsignal,400); % Index of the first data symbol
 disp(['DATA IDX ' num2str(data_idx)]);
 
 
 symbol_length = conf.n_carriers*conf.os_factor;
-n_symbols = ceil(conf.data_length/conf.n_carriers);
+n_symbols = ceil(conf.data_length/conf.n_carriers)+1; %+1 for training symbol
 signal_length = (1+conf.cpref_length)*symbol_length*n_symbols; % length of total signal
 
 disp(['SYMBOL LENGTH WITHOUT PREFIX ' num2str(symbol_length)]);
@@ -63,11 +63,27 @@ end
 %% Serial
 rx = rx(:);
 
-%% Delete unnecessary data at the end
-rx = rx(1:conf.data_length);
 
+%% Delete unnecessary data at the end
+rx_training_symbols =  rx(1:conf.n_carriers);
+rx = rx(conf.n_carriers+1:conf.data_length+conf.n_carriers);
+
+%% Check phase of training bits
+training_bits_phase = mod(angle(rx_training_symbols),2*pi);
+exact_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))),2*pi);
+phase_difference =  training_bits_phase -exact_training_bits_phase ;
+sizepd = size(phase_difference)
+%phase_difference;
+
+%% Correct phase
+for i = 0:n_symbols-2
+    sizerx = size(rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)))
+   rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) = rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) .*exp(-j*phase_difference);
+end
 %% Demap
 rxbits = demapper(rx, 2);
+
+
 
 
 
