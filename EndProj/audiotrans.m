@@ -154,7 +154,7 @@ clc
 
         [rxbits, conf]       = rx(rxsignal,conf);
 
-        plot([txbits rxbits])
+       % plot([txbits rxbits])
         
         res.rxnbits(k)      = length(rxbits);
         res.biterrors(k)    = sum(rxbits ~= txbits);

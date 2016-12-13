@@ -78,7 +78,6 @@ for i = 1:n_frames
         training_bits_phase = mod(angle(frame_data),2*pi);
         orig_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))), 2*pi);
         phase_difference =  training_bits_phase - orig_training_bits_phase ;
-        %sizepd = size(phase_difference)  % the same as n_carriers
         theta_hat(:, i+1) = phase_difference;
     else
         
@@ -86,13 +85,13 @@ for i = 1:n_frames
             if(conf.do_phase_track)
                 
                 % Apply Viterbi-Viterbi phase estimation
-                deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
+                deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1)
                 
                 % Unroll phase
           
                 [~, ind] = min(abs(deltaTheta - repmat(theta_hat(:,i),1, 6)), [], 2)
-                
-                indvec =sub2ind(size(deltaTheta), (1:conf.n_carriers)', ind)
+                indvec = (0:conf.n_carriers-1).*6 + ind';
+                deltaTheta = deltaTheta';
                 theta = deltaTheta(indvec)
                 
                 % Lowpass filter phase
