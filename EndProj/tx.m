@@ -94,6 +94,10 @@ norms = mean(abs(s).^2);
 txsignal = [ preamble_shaped /sqrt(normp); s/sqrt(norms)];
 disp(['LENGTH TX SIGNAL WITH PREAMBLE ' num2str(length(txsignal))])
 
+
+corner_f = conf.f_bw*1.2;
+txsignal = ofdmlowpass(txsignal, conf, corner_f);
+
 %% Upconvert
 time = 0:1/conf.f_s: (length(txsignal) -1)/conf.f_s;
 txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));

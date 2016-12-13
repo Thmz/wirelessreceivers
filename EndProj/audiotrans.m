@@ -33,7 +33,7 @@ clc
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 8000;
     conf.offset = 0;
-    conf.nbits = 256*8;
+    conf.nbits = 256*200;
     
     conf.data_length = conf.nbits/conf.modulation_order;
     conf.n_data_frames = ceil(conf.data_length/conf.n_carriers);
@@ -48,7 +48,7 @@ clc
 
     % Training symbols
     conf.training_symbols = (1 - 2 * lfsr_framesync(conf.n_carriers));
-    conf.training_interval = 3;
+    conf.training_interval = 200;
     
     % Init Section
     % all calculations that you only have to do once
@@ -93,7 +93,7 @@ clc
         % create vector for transmission
         rawtxsignal = [ zeros(conf.f_s,1) ; normtxsignal ;  zeros(conf.f_s,1) ]; % add padding before and after the signal
         rawtxsignal = [  rawtxsignal  zeros(size(rawtxsignal)) ]; % add second channel: no signal
-        txdur       = length(rawtxsignal)/conf.f_s % calculate length of transmitted signal
+        txdur       = length(rawtxsignal)/conf.f_s; % calculate length of transmitted signal
 
         % wavwrite(rawtxsignal,conf.f_s,16,'out.wav')   
         audiowrite('out.wav',rawtxsignal,conf.f_s)  

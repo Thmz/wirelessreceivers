@@ -70,8 +70,7 @@ for i = 1:n_frames
     frame_data = rx(:, i);
     
     % Check if training frame
-    i
-    is_training = mod(i-1, conf.training_interval+1) == 0
+    is_training = mod(i-1, conf.training_interval+1) == 0;
     
     if(is_training)
         %% Check phase of training bits
@@ -85,31 +84,29 @@ for i = 1:n_frames
             if(conf.do_phase_track)
                 
                 % Apply Viterbi-Viterbi phase estimation
-                deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1)
+                deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
                 
                 % Unroll phase
           
-                [~, ind] = min(abs(deltaTheta - repmat(theta_hat(:,i),1, 6)), [], 2)
-                indvec = (0:conf.n_carriers-1).*6 + ind';
+                [~, ind] = min(abs(deltaTheta - repmat(theta_hat(:,i),1, 6)), [], 2);
+                indvec = (0:conf.n_carriers-1).*6 + ind'; 
                 deltaTheta = deltaTheta';
-                theta = deltaTheta(indvec)
+                theta = deltaTheta(indvec)';
                 
                 % Lowpass filter phase
-                theta_hat(:, i+1) = mod(0.01*theta + 0.99*theta_hat(i), 2*pi);
+                theta_hat(:, i+1) = mod(0.01*theta + 0.99*theta_hat(:, i), 2*pi);
             else
                 theta_hat(:,i+1) = theta_hat(:, i);
             end
             % Phase correction
             frame_data = frame_data .* exp(-1j * theta_hat(:, i+1));   % ...and rotate the current symbol accordingly
-        end
-        
-        
-        
+        end        
         % Add values to received payload data
         payload_data = [payload_data(:) ; frame_data(:)];
     end  
 end
-
+figure, plot(theta_hat(1:10, :)')
+title('Theta hat');
 
 
 %phase_difference;
