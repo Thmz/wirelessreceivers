@@ -27,17 +27,19 @@ rxsignal = ofdmlowpass(rxsignal, conf, corner_f);
 
 
 %% Frame sync
-[data_idx, theta] = frame_sync(rxsignal, conf.os_factor); % Index of the first data symbol
-%[data_idx, theta] = frame_sync(rxsignal,400); % Index of the first data symbol
+[data_idx, ~] = frame_sync(rxsignal, conf.os_factor); % Index of the first data symbol
 disp(['DATA IDX ' num2str(data_idx)]);
 
 
-symbol_length = conf.n_carriers*conf.os_factor;
-n_symbols = ceil(conf.data_length/conf.n_carriers)+1; %+1 for training symbol
-signal_length = (1+conf.cpref_length)*symbol_length*n_symbols; % length of total signal
+os_frame_length = conf.n_carriers*conf.os_factor;
+n_data_frames = ceil(conf.data_length/conf.n_carriers);
+n_training_frames = ceil(n_data_frames/conf.training_interval);
+n_frames = n_data_frames + n_training_frames;
 
-disp(['SYMBOL LENGTH WITHOUT PREFIX ' num2str(symbol_length)]);
-disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)]);
+signal_length = (1+conf.cpref_length)*os_frame_length*n_frames; % length of total signal
+
+disp(['FRAME LENGTH WITHOUT PREFIX ' num2str(os_frame_length)]);
+disp(['NUMBER OF FRAMES ' num2str(n_frames)]);
 disp(['EXPECTED SIGNAL LENGTH ' num2str(signal_length)]);
 
 rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbols
@@ -46,43 +48,93 @@ rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbo
 
 
 %% Serial to parallel
-rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*symbol_length  n_symbols]);
+rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*os_frame_length  n_frames]);
 
 %% Delete cyclic prefix
 rxmatrix = rxmatrix(conf.cpref_length*conf.n_carriers*conf.os_factor+1: end, :);
 
-
 %% FFT
-rx = zeros(conf.n_carriers, n_symbols);
-for i = 1:n_symbols
+rx = zeros(conf.n_carriers, n_frames);
+for i = 1:n_frames
    rx(:, i) = osfft(rxmatrix(:,i), conf.os_factor);
 end
 
+%% Process signal
+% Can also be done in loop above, but now separate to make it more clear
+
+payload_data = [];
+theta_hat = zeros(conf.n_carriers, n_frames+1);
+
+% Loop over frames
+for i = 1:n_frames
+    frame_data = rx(:, i)
+    
+    % Check if training frame
+    is_training = mod(i-1, conf.training_interval) == 0;
+    
+    if(is_training)
+        %% Check phase of training bits
+        training_bits_phase = mod(angle(frame_data),2*pi);
+        orig_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))), 2*pi);
+        phase_difference =  training_bits_phase - orig_training_bits_phase ;
+        %sizepd = size(phase_difference)  % the same as n_carriers
+        theta_hat(:, 1) = phase_difference
+    else
+        
+        % Apply Viterbi-Viterbi phase estimation
+        deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
+
+        % Unroll phase
+        %testMat = repmat(theta_hat(:,i), 6)
+        theta = min(abs(deltaTheta - repmat(theta_hat(:,i),1, 6)), [], 2);
+       % theta = deltaTheta(ind);
+
+        % Lowpass filter phase
+       % theta_hat(:, i+1) = mod(0.01*theta + 0.99*theta_hat(i), 2*pi);
+
+        % Phase correction
+        %frame_data = frame_data .* exp(-1j * theta_hat(:, i+1));   % ...and rotate the current symbol accordingly
+
+% Add values to received payload data
+        payload_data = [payload_data(:) ; frame_data(:)];
+        
+        
+
+%             % Apply Viterbi-Viterbi phase estimation
+%             deltaTheta = 1/4*angle(-frame_data.^4) + pi/2*(-1:4);
+%             
+%             % Unroll phase
+%             [~, ind] = min(abs(deltaTheta - theta_hat(k)));
+%             theta = deltaTheta(ind);
+% 
+%             % Lowpass filter phase
+%             theta_hat(k+1) = mod(0.01*theta + 0.99*theta_hat(k), 2*pi);
+% 
+%             % Phase correction
+%             payload_data(k) = payload_data(k) * exp(-1j * theta_hat(k+1));   % ...and rotate the current symbol accordingly
+% 
+%             
+ end 
+        
+        
+        
+end
 
 
-%% Serial
-rx = rx(:);
 
-
-%% Delete unnecessary data at the end
-rx_training_symbols =  rx(1:conf.n_carriers);
-rx = rx(conf.n_carriers+1:conf.data_length+conf.n_carriers);
-
-%% Check phase of training bits
-training_bits_phase = mod(angle(rx_training_symbols),2*pi);
-exact_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))),2*pi);
-phase_difference = exact_training_bits_phase - training_bits_phase;
-sizepd = size(phase_difference)
 %phase_difference;
 
-%% Correct phase
-for i = 0:n_symbols-1
-    sizerx = size(rx(i*conf.n_carriers : conf.n_carriers*(i+1)))
-   rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) = rx(i*conf.n_carriers : conf.n_carriers*(i+1)) *exp(-j*phase_difference);
-end
-%% Demap
-rxbits = demapper(rx, 2);
+% %% Correct phase
+% for i = 0:n_frames-2
+%     sizerx = size(rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)))
+%    rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) = rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) .*exp(-j*phase_difference);
+% end
 
+%% Demap
+rxbits = demapper(payload_data, 2);
+
+%% Delete unnecessary data at the end
+rxbits = rxbits(1:conf.data_length*2);
 
 
 

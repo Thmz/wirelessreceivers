@@ -19,6 +19,9 @@ clc
     % Configuration Values
     conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
 
+    conf.do_phase_estim = 1;
+    conf.do_phase_track = 1;
+    
     conf.n_carriers  = 256; % Number of OFDM carriers, multiple of 2 for efficient FFT implementation
     conf.f_s     = 48000;   % sampling rate, f_sampling = N/T with T the OFDM symbol length without prefix? 
     conf.f_spacing = 5; % In hz, f_spacing = 1/T, with T defined as above
@@ -26,10 +29,14 @@ clc
     conf.f_spacing = conf.f_s/( conf.os_factor*conf.n_carriers)
    % conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
-    conf.nframes = 1;       % number of frames to transmit
+    conf.nframes = 1;       % number of frames to transmit - dit was gegeven en is verwarrend
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 8000;
     conf.offset = 0;
+    conf.nbits = 256*8;
+    
+    conf.data_length = conf.nbits/conf.modulation_order;
+    conf.n_data_frames = ceil(conf.data_length/conf.n_carriers);
     
     % f_spacing must be divisor of f_sampling
     
@@ -37,8 +44,12 @@ clc
     conf.bitsps     = 16;   % bits per audio sample
     conf.cpref_length = 0.5; % cyclic prefix length is half of the OFDM symbol length
     
-    conf.data_length = conf.nbits/conf.modulation_order;
+    
 
+    % Training symbols
+    conf.training_symbols = (1 - 2 * lfsr_framesync(conf.n_carriers));
+    conf.training_interval = 3;
+    
     % Init Section
     % all calculations that you only have to do once
     if mod(conf.os_factor,1) ~= 0
@@ -143,6 +154,8 @@ clc
 
         [rxbits, conf]       = rx(rxsignal,conf);
 
+        plot([txbits rxbits])
+        
         res.rxnbits(k)      = length(rxbits);
         res.biterrors(k)    = sum(rxbits ~= txbits);
 

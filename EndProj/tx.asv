@@ -14,31 +14,61 @@ function [txsignal conf] = tx(txbits,conf,k)
 %
 
 %% Convert to QPSK
-tx = mapper(txbits, 2);
-% length(tx) is in conf.data_length
+tx_symbols = mapper(txbits, 2);
+% length(tx_symbols) is in conf.data_length
 
 %% Convert to parallel
-n_symbols = ceil(conf.data_length/conf.n_carriers)+1; % total number of OFDM symbols
-disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)])
+n_frames = ceil(conf.data_length/conf.n_carriers)+1; % total number of OFDM symbols
+disp(['NUMBER OF SYMBOLS ' num2str(n_frames)])
 
-%% Training symbols
-% A training symbol for each sub carrier frequency based on lfsr
-training_symbols = (1 - 2 * lfsr_framesync(conf.n_carriers))';
 
-%%
+
+%% Modify length of tx symbols
 % Change into vector that is multiple of number of carriers
-txsymbols = randi([0 1],1, conf.n_carriers*n_symbols*2);
-txsymbols = mapper(txsymbols, 2);
-txsymbols(1:length(tx)+conf.) = [training_symbols tx];
-txmatrix = reshape(txsymbols, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
+
+% The current size of the symbols is
+conf.data_length;
+
+% To be a multiple of the number of carriers, the required number of symbols is
+tx_length = conf.n_carriers * n_frames;
+
+% So we add more random symbols, to be exact amount of other random symbols is:
+ext_length = tx_length - conf.data_length
+
+% Generate the symbols
+ext_bits = randi([0 1],1, ext_length*2); % *2 because each symbol requires 2 bits
+ext_symbols = mapper(ext_bits, 2);
+
+%size1 = size(txsymbols(1:length(tx)+conf.n_carriers))
+%size2 = size([training_symbols ;tx])
+
+% Add extension symbols to tx_symbols, so the length of tx_symbols is now a
+% multiple of the number of carriers
+tx_symbols = [tx_symbols(:); ext_symbols(:)];
+
+
+%% Training frames
+% A training symbol for each sub carrier frequency based on lfsr
+% Training_symbols are the symbols for one training frame
+tx_symbols = insert_training(tx_symbols, conf);
+
+insert_interval_symbols = conf.training_interval * conf.n_carriers;
+[tx_symbols, nb_inserted] = insert_regular(tx_symbols, training_symbols, insert_interval_symbols);
+
+% Update number of frames because training symbols added
+n_frames = n_frames + nb_inserted * length(conf.training_symbols / 
+
+%% Create a matrix of the symbols, with each column a frame
+% A bit inefficient but makes it easier to analyze frame data
+txmatrix = reshape(tx_symbols, [conf.n_carriers, n_frames]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
 % and add cyclic prefix
 symbol_length =  conf.n_carriers * conf.os_factor;
 disp(['SYMBOL LENGTH ' num2str(symbol_length)])
 
-s = zeros( (1+conf.cpref_length) * symbol_length, n_symbols);
-for i = 1:n_symbols
+s = zeros( (1+conf.cpref_length) * symbol_length, n_frames);
+for i = 1:n_frames
    fttt = osifft(txmatrix(:, i), conf.os_factor);
    cpref = fttt(end - conf.cpref_length*symbol_length+1: end);
    s(:, i) = [cpref; fttt];
