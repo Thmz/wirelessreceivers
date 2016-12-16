@@ -31,31 +31,31 @@ rxsignal = ofdmlowpass(rxsignal, conf, corner_f);
 disp(['DATA IDX ' num2str(data_idx)]);
 
 
-os_frame_length = conf.n_carriers*conf.os_factor;
-n_data_frames = ceil(conf.data_length/conf.n_carriers);
-n_training_frames = ceil(n_data_frames/conf.training_interval);
-n_frames = n_data_frames + n_training_frames;
+os_symbol_length = conf.n_carriers*conf.os_factor;
+n_data_symbols = ceil(conf.data_length/conf.n_carriers);
+n_training_symbols = ceil(n_data_symbols/conf.training_interval);
+n_symbols = n_data_symbols + n_training_symbols;
 
-signal_length = (1+conf.cpref_length)*os_frame_length*n_frames; % length of total signal
+frame_length = (1+conf.cpref_length)*os_symbol_length*n_symbols; % length of total signal
 
-disp(['FRAME LENGTH WITHOUT PREFIX ' num2str(os_frame_length)]);
-disp(['NUMBER OF FRAMES ' num2str(n_frames)]);
-disp(['EXPECTED SIGNAL LENGTH ' num2str(signal_length)]);
+disp(['SYMBOL LENGTH WITHOUT PREFIX ' num2str(os_symbol_length)]);
+disp(['NUMBER OF SYMBOLS ' num2str(n_symbols)]);
+disp(['EXPECTED FRAME LENGTH ' num2str(frame_length)]);
 
-rxsignal = rxsignal(data_idx:data_idx+signal_length-1); % The payload data symbols
+rxsignal = rxsignal(data_idx:data_idx+frame_length-1); % The payload data symbols
 
 
 
 
 %% Serial to parallel
-rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*os_frame_length  n_frames]);
+rxmatrix = reshape(rxsignal, [ (1+conf.cpref_length)*os_symbol_length  n_symbols]);
 
 %% Delete cyclic prefix
 rxmatrix = rxmatrix(conf.cpref_length*conf.n_carriers*conf.os_factor+1: end, :);
 
 %% FFT
-rx = zeros(conf.n_carriers, n_frames);
-for i = 1:n_frames
+rx = zeros(conf.n_carriers, n_symbols);
+for i = 1:n_symbols
     rx(:, i) = osfft(rxmatrix(:,i), conf.os_factor);
 end
 
@@ -63,18 +63,24 @@ end
 % Can also be done in loop above
 
 payload_data = [];
-theta_hat = zeros(conf.n_carriers, n_frames+1);
+theta_hat = zeros(conf.n_carriers, n_symbols+1);
 
 % Loop over frames
-for i = 1:n_frames
-    frame_data = rx(:, i);
+for i = 1:n_symbols
+    symbol_data = rx(:, i);
     
     % Check if training frame
     is_training = mod(i-1, conf.training_interval+1) == 0;
     
     if(is_training)
-        %% Check phase of training bits
-        training_bits_phase = mod(angle(frame_data),2*pi);
+        channel = symbol_data./conf.training_symbols;
+        figure('Name', 'channel magnitude'), plot(abs(channel));
+        figure('Name', 'channel phase'), plot(angle(channel));
+        figure('Name', 'channel impulse response'), plot(abs(ifft(channel)));
+        
+        
+        % Check phase of training bits
+        training_bits_phase = mod(angle(symbol_data),2*pi);
         orig_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))), 2*pi);
         phase_difference =  training_bits_phase - orig_training_bits_phase ;
         theta_hat(:, i+1) = phase_difference;
@@ -84,7 +90,7 @@ for i = 1:n_frames
             if(conf.do_phase_track)
                 
                 % Apply Viterbi-Viterbi phase estimation
-                deltaTheta = 1/4*angle( repmat(-frame_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
+                deltaTheta = 1/4*angle( repmat(-symbol_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
                 
                 % Unroll phase
           
@@ -94,28 +100,20 @@ for i = 1:n_frames
                 theta = deltaTheta(indvec)';
                 
                 % Lowpass filter phase
-                theta_hat(:, i+1) = mod(0.01*theta + 0.99*theta_hat(:, i), 2*pi);
+                theta_hat(:, i+1) = mod(0.05*theta + 0.95*theta_hat(:, i), 2*pi);
             else
                 theta_hat(:,i+1) = theta_hat(:, i);
             end
             % Phase correction
-            frame_data = frame_data .* exp(-1j * theta_hat(:, i+1));   % ...and rotate the current symbol accordingly
+            symbol_data = symbol_data .* exp(-1j * theta_hat(:, i+1));   % ...and rotate the current symbol accordingly
         end        
         % Add values to received payload data
-        payload_data = [payload_data(:) ; frame_data(:)];
+        payload_data = [payload_data(:) ; symbol_data(:)];
     end  
 end
-figure, plot(theta_hat(1:10, :)')
+figure, plot(theta_hat(1:30, :)')
 title('Theta hat');
 
-
-%phase_difference;
-
-% %% Correct phase
-% for i = 0:n_frames-2
-%     sizerx = size(rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)))
-%    rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) = rx(i*conf.n_carriers +1 : conf.n_carriers*(i+1)) .*exp(-j*phase_difference);
-% end
 
 %% Demap
 rxbits = demapper(payload_data, 2);

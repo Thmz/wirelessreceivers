@@ -14,7 +14,7 @@ function [txsignal conf] = tx(txbits,conf,k)
 %
 
 %% Convert to QPSK
-tx_symbols = mapper(txbits, 2);
+tx = mapper(txbits, 2);
 % length(tx_symbols) is in conf.data_length
 
 % n_data_frames zit nu in config! onderstaande makes no sense 
@@ -31,7 +31,7 @@ tx_symbols = mapper(txbits, 2);
 conf.data_length;
 
 % To be a multiple of the number of carriers, the required number of symbols is
-tx_length = conf.n_carriers * conf.n_data_frames;
+tx_length = conf.n_carriers * conf.n_data_symbols;
 
 % So we add more random symbols, to be exact amount of other random symbols is:
 ext_length = tx_length - conf.data_length
@@ -45,28 +45,28 @@ ext_symbols = mapper(ext_bits, 2);
 
 % Add extension symbols to tx_symbols, so the length of tx_symbols is now a
 % multiple of the number of carriers
-tx_symbols = [tx_symbols(:); ext_symbols(:)];
+tx = [tx(:); ext_symbols(:)];
 
 
 %% Training frames
 % A training symbol for each sub carrier frequency based on lfsr
 % Training_symbols are the symbols for one training frame
-[tx_symbols, nb_inserted] = insert_regular(tx_symbols, conf.training_symbols, conf.training_interval * conf.n_carriers);
+[tx, nb_inserted] = insert_regular(tx, conf.training_symbols, conf.training_interval * conf.n_carriers);
 
-% Update number of frames because training symbols added
-n_frames = conf.n_data_frames + nb_inserted; %  * length(conf.training_symbols) / conf.n_carriers;
+% Update number of OFDM symbols because training symbols added
+n_symbols = conf.n_data_symbols + nb_inserted; %  * length(conf.training_symbols) / conf.n_carriers;
 
-%% Create a matrix of the symbols, with each column a frame
+%% Create a matrix of the symbols, with each column an OFDM symbol
 % A bit inefficient but makes it easier to analyze frame data
-txmatrix = reshape(tx_symbols, [conf.n_carriers, n_frames]); % Matrix with OFDM symbols
+txmatrix = reshape(tx, [conf.n_carriers, n_symbols]); % Matrix with OFDM symbols
 
 %% Convert with IDFT operation
 % and add cyclic prefix
 symbol_length =  conf.n_carriers * conf.os_factor;
 disp(['SYMBOL LENGTH ' num2str(symbol_length)])
 
-s = zeros( (1+conf.cpref_length) * symbol_length, n_frames);
-for i = 1:n_frames
+s = zeros( (1+conf.cpref_length) * symbol_length, n_symbols);
+for i = 1:n_symbols
    fttt = osifft(txmatrix(:, i), conf.os_factor);
    cpref = fttt(end - conf.cpref_length*symbol_length+1: end);
    s(:, i) = [cpref; fttt];
@@ -74,12 +74,6 @@ end
 
 %% Convert to serial
 s = s(:);
-
-%% Calculate corner frequency
-%corner_f = conf.f_bw*2; %???
-%disp(['LPF CORNER FREQ ' num2str(corner_f)])
-%s = ofdmlowpass(s, conf, corner_f);
-
 disp(['LENGTH TX SIGNAL WITHOUT PREAMBLE ' num2str(length(s))])
 
 %% Preamble

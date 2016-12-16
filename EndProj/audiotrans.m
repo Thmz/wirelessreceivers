@@ -31,12 +31,12 @@ clc
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
     conf.nframes = 1;       % number of frames to transmit - dit was gegeven en is verwarrend
     conf.modulation_order = 2; % BPSK:1, QPSK:2
-    conf.f_c     = 8000;
+    conf.f_c     = 10000;
     conf.offset = 0;
-    conf.nbits = 256*200;
+    conf.nbits = 256*40;
     
     conf.data_length = conf.nbits/conf.modulation_order;
-    conf.n_data_frames = ceil(conf.data_length/conf.n_carriers);
+    conf.n_data_symbols = ceil(conf.data_length/conf.n_carriers);
     
     % f_spacing must be divisor of f_sampling
     
