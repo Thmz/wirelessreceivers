@@ -17,7 +17,6 @@ function [txsignal conf] = tx(txbits,conf,k)
 tx = mapper(txbits, conf.modulation_order);
 % length(tx_symbols) is in conf.data_length
 
-
 %% Modify length of tx symbols
 % Change into vector that is multiple of number of carriers
 
