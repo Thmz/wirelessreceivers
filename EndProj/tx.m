@@ -58,9 +58,9 @@ disp(['SYMBOL LENGTH ' num2str(symbol_length)])
 
 s = zeros( (1+conf.cpref_length) * symbol_length, n_symbols);
 for i = 1:n_symbols
-   fttt = osifft(txmatrix(:, i), conf.os_factor);
-   cpref = fttt(end - conf.cpref_length*symbol_length+1: end);
-   s(:, i) = [cpref; fttt];
+   temp = osifft(txmatrix(:, i), conf.os_factor);
+   cpref = temp(end - conf.cpref_length*symbol_length+1: end);
+   s(:, i) = [cpref; temp];
 end
 
 %% Convert to serial
