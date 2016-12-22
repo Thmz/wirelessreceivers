@@ -13,11 +13,8 @@ clc
 %       - builtin WAV tools on Windows 
 %   - 'bypass' : no audio transmission, takes txsignal as received signal
 
-%fsym = [100,400,800,1200,1600,2000,]%100:600:2000
-%for jj = 1:length(fsym);
-
     % Configuration Values
-    conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
+    conf.audiosystem = 'bypass'; % Values: 'matlab','native','bypass'
 
     conf.do_phase_estim = 1;
     conf.do_phase_track = 1;
@@ -27,13 +24,13 @@ clc
     conf.f_spacing = 5; % In hz, f_spacing = 1/T, with T defined as above
     conf.os_factor  = ceil(conf.f_s/(conf.f_spacing*conf.n_carriers)); %os factor for OSIFFT & IFFT also used for preamble
     conf.f_spacing = conf.f_s/( conf.os_factor*conf.n_carriers)
-   % conf.f_sym   = conf.n_carriers * conf.f_spacing;     % symbol rate, f_spacing = 1/T 
     conf.f_bw = ceil(( conf.n_carriers +1 )/2 )*conf.f_spacing;
-    conf.nframes = 1;       % number of frames to transmit - dit was gegeven en is verwarrend
+    conf.nframes = 1;          % number of frames to transmit
     conf.modulation_order = 2; % BPSK:1, QPSK:2
-    conf.f_c     = 10000;
+    conf.f_c     = 8000;
     conf.offset = 0;
     conf.nbits = 256*40;
+    conf.corner_f = conf.f_bw*1.2;
     
     conf.data_length = conf.nbits/conf.modulation_order;
     conf.n_data_symbols = ceil(conf.data_length/conf.n_carriers);
@@ -42,7 +39,7 @@ clc
     
     conf.npreamble  = 100;
     conf.bitsps     = 16;   % bits per audio sample
-    conf.cpref_length = 0.5; % cyclic prefix length is half of the OFDM symbol length
+    conf.cpref_length = 8/256; % cyclic prefix length is half of the OFDM symbol length
     
     
 
@@ -70,14 +67,10 @@ clc
 
 
     % Results
-
-
     for k=1:conf.nframes
 
         % Generate random data
         txbits = randi([0 1],conf.nbits,1);
-        %txbits = ones(conf.nbits, 1);
-        % TODO: Implement tx() Transmit Function
         [txsignal, conf] = tx(txbits,conf,k);
         
         % % % % % % % % % % % %
@@ -153,8 +146,6 @@ clc
         % % % % % % % % % % % %
 
         [rxbits, conf]       = rx(rxsignal,conf);
-
-       % plot([txbits rxbits])
         
         res.rxnbits(k)      = length(rxbits);
         res.biterrors(k)    = sum(rxbits ~= txbits);
@@ -163,11 +154,3 @@ clc
 
    per = sum(res.biterrors > 0)/conf.nframes
    ber = sum(res.biterrors)/sum(res.rxnbits)
-
-%end
- 
-%  figure('Name', 'BER');
-%  semilogy(fsym, ber);
-%  xlabel('Symbol rate');
-%  ylabel('BER [%]');
-%  title('BER with time offset at receiver equal to 0.5Hz');

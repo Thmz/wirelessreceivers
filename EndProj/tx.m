@@ -14,14 +14,8 @@ function [txsignal conf] = tx(txbits,conf,k)
 %
 
 %% Convert to QPSK
-tx = mapper(txbits, 2);
+tx = mapper(txbits, conf.modulation_order);
 % length(tx_symbols) is in conf.data_length
-
-% n_data_frames zit nu in config! onderstaande makes no sense 
-% %% Convert to parallel
-% n_frames = ceil(conf.data_length/conf.n_carriers)+1; % total number of OFDM symbols
-% disp(['NUMBER OF SYMBOLS ' num2str(n_frames)])
-
 
 
 %% Modify length of tx symbols
@@ -39,9 +33,6 @@ ext_length = tx_length - conf.data_length
 % Generate the symbols
 ext_bits = randi([0 1],1, ext_length*2); % *2 because each symbol requires 2 bits
 ext_symbols = mapper(ext_bits, 2);
-
-%size1 = size(txsymbols(1:length(tx)+conf.n_carriers))
-%size2 = size([training_symbols ;tx])
 
 % Add extension symbols to tx_symbols, so the length of tx_symbols is now a
 % multiple of the number of carriers
@@ -82,56 +73,15 @@ preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
 preamble_up = upsample(preamble_bpsk, conf.os_factor);
 preamble_shaped = conv(preamble_up, conf.h.','same');
 
-%% Get signal
+%% Normalize signal
 normp = mean(abs(preamble_shaped).^2);
 norms = mean(abs(s).^2);
 txsignal = [ preamble_shaped /sqrt(normp); s/sqrt(norms)];
 disp(['LENGTH TX SIGNAL WITH PREAMBLE ' num2str(length(txsignal))])
 
-
-corner_f = conf.f_bw*1.2;
-txsignal = ofdmlowpass(txsignal, conf, corner_f);
+%% Apply lowpass
+txsignal = ofdmlowpass(txsignal, conf, conf.corner_f);
 
 %% Upconvert
 time = 0:1/conf.f_s: (length(txsignal) -1)/conf.f_s;
 txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));
-
-
-%% TODO upconvert to carrier freq
-
-% Old TX
-% 
-% 
-% 
-% for i = 1:conf.n_carriers:length(txbits)-conf.n_carriers
-%     a(i, :) = txbits(i:i+conf.n_carriers-1);
-% end
-% a
-%     
-% 
-% 
-% 
-% % 
-% 
-% 
-% 
-% 
-% 
-% 
-% 
-% % dummy 400Hz sinus generation
-% %time = 1:1/conf.f_s:4;
-% %txsignal = 0.3*sin(2*pi*400 * time.');
-% 
-% preamble_bpsk = (1 - 2 * lfsr_framesync(conf.npreamble));
-% tx = [preamble_bpsk; mapper(txbits, conf.modulation_order)];
-% 
-% %oversample
-% tx = upsample(tx, conf.os_factor);
-% 
-% % Shape the symbol diracs with pulse
-% txsignal = conv(tx, conf.h.','same');
-% 
-% % Upconvert
-% time = 0:1/conf.f_s: (length(txsignal) -1)/conf.f_s;
-% txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));
