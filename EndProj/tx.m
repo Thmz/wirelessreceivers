@@ -73,14 +73,19 @@ preamble_up = upsample(preamble_bpsk, conf.os_factor);
 preamble_shaped = conv(preamble_up, conf.h.','same');
 
 %% Normalize signal
+figure, plot(abs([preamble_shaped ;s])), title('TX signal without normalization'), ylabel('amplitude'), xlabel('symbol nb');
 normp = mean(abs(preamble_shaped).^2);
 norms = mean(abs(s).^2);
 txsignal = [ preamble_shaped /sqrt(normp); s/sqrt(norms)];
 disp(['LENGTH TX SIGNAL WITH PREAMBLE ' num2str(length(txsignal))])
+figure, plot(abs(txsignal)), title('TX signal with normalization'), ylabel('amplitude'), xlabel('symbol nb');
+
 
 %% Apply lowpass
 txsignal = ofdmlowpass(txsignal, conf, conf.corner_f);
 
+
 %% Upconvert
 time = 0:1/conf.f_s: (length(txsignal) -1)/conf.f_s;
 txsignal = real(txsignal .* exp(1j*2*pi*conf.f_c * time.'));
+%plot(abs(fft(txsignal)))

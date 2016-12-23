@@ -14,7 +14,7 @@ clc
 %   - 'bypass' : no audio transmission, takes txsignal as received signal
 
     % Configuration Values
-    conf.audiosystem = 'matlab'; % Values: 'matlab','native','bypass'
+    conf.audiosystem = 'bypass'; % Values: 'matlab','native','bypass'
 
     conf.do_phase_estim = 1;
     conf.do_phase_track = 1;
@@ -29,17 +29,15 @@ clc
     conf.modulation_order = 2; % BPSK:1, QPSK:2
     conf.f_c     = 8000;
     conf.offset = 0;
-    conf.nbits = 256*50;
+    conf.nbits = 256*10;
     conf.corner_f = conf.f_bw*1.2;
     
     conf.data_length = conf.nbits/conf.modulation_order;
     conf.n_data_symbols = ceil(conf.data_length/conf.n_carriers);
     
-    % f_spacing must be divisor of f_sampling
-    
     conf.npreamble  = 100;
     conf.bitsps     = 16;   % bits per audio sample
-    conf.cpref_length = 0.5;%8/256; % cyclic prefix length is half of the OFDM symbol length
+    conf.cpref_length = 128/256; % cyclic prefix length is half of the OFDM symbol length
     
     
 
@@ -140,12 +138,15 @@ clc
         plot(rxsignal);
         title('Received Signal')
 
+        
         %
         % End
         % Audio Transmission   
         % % % % % % % % % % % %
 
         [rxbits, conf]       = rx(rxsignal,conf);
+        
+        figure, plot(rxbits ~= txbits), title('rxbits ~= txbits');
         
         res.rxnbits(k)      = length(rxbits);
         res.biterrors(k)    = sum(rxbits ~= txbits);

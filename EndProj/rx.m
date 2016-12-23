@@ -18,6 +18,7 @@ disp('****** START RX ******')
 
 
 % Downconvert
+plot(abs(fft(rxsignal)))
 time = 0:1/conf.f_s: (length(rxsignal) -1)/conf.f_s;
 rxsignal = rxsignal .* exp(-1j*2*pi*(conf.f_c + conf.offset) * time.');
 rxsignal = ofdmlowpass(rxsignal, conf, conf.corner_f);
@@ -61,7 +62,8 @@ end
 % Can also be done in loop above
 
 payload_data = [];
-theta_hat = zeros(conf.n_carriers, n_symbols+1);
+theta_hat = zeros(conf.n_carriers, n_symbols+1); % without phase tracking
+theta_hat_pt = zeros(conf.n_carriers, n_symbols+1); % With phase tracking, doing both to compare
 
 % Loop over frames
 for i = 1:n_symbols
@@ -81,28 +83,33 @@ for i = 1:n_symbols
         orig_training_bits_phase = mod(angle((1 - 2 * lfsr_framesync(conf.n_carriers))), 2*pi);
         phase_difference =  training_bits_phase - orig_training_bits_phase ;
         theta_hat(:, i+1) = phase_difference;
+        theta_hat_pt(:, i+1) = phase_difference;
     else
        % symbol_data = symbol_data ./ channel; % Rescale symbols
         
         if(conf.do_phase_estim)
-            if(conf.do_phase_track)
+          
                 
-                % Apply Viterbi-Viterbi phase estimation
-                deltaTheta = 1/4*angle( repmat(-symbol_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
-                
-                % Unroll phase
-                [~, ind] = min(abs(deltaTheta - repmat(theta_hat(:,i),1, 6)), [], 2);
-                indvec = (0:conf.n_carriers-1).*6 + ind'; 
-                deltaTheta = deltaTheta';
-                theta = deltaTheta(indvec)';
-                
-                % Lowpass filter phase
-                theta_hat(:, i+1) = mod(0.05*theta + 0.95*theta_hat(:, i), 2*pi);
+            % Apply Viterbi-Viterbi phase estimation
+            deltaTheta = 1/4*angle( repmat(-symbol_data(:).^4, 1 , 6)) + repmat( pi/2*(-1:4), conf.n_carriers, 1);
+
+            % Unroll phase
+            [~, ind] = min(abs(deltaTheta - repmat(theta_hat_pt(:,i),1, 6)), [], 2);
+            indvec = (0:conf.n_carriers-1).*6 + ind'; 
+            deltaTheta = deltaTheta';
+            theta = deltaTheta(indvec)';
+            % Lowpass filter phase
+            theta_hat_pt(:, i+1) = mod(0.05*theta + 0.95*theta_hat_pt(:, i), 2*pi);
+             
+            % For the case without phase tracking
+            theta_hat(:, i+1) = theta_hat(:, i);
+            if(conf.do_phase_track)    
+               theta_corr = theta_hat_pt(:, i+1); 
             else
-                theta_hat(:, i+1) = theta_hat(:, i);
+               theta_corr = theta_hat(:, i+1);
             end
             % Phase correction
-            symbol_data = symbol_data .* exp(-1j * theta_hat(:, i+1));   % ...and rotate the current symbol accordingly
+            symbol_data = symbol_data .* exp(-1j * theta_corr);   % ...and rotate the current symbol accordingly
         end        
         % Add values to received payload data
         payload_data = [payload_data(:) ; symbol_data(:)];
@@ -110,8 +117,12 @@ for i = 1:n_symbols
 end
 
 % Plot 30 carriers and their estimation of theta
-figure, plot(theta_hat(1:30, :)')
-title('Eestimation of theta (Theta hat)');
+figure, plot(theta_hat(1:20:256, :)')
+title('Estimation of theta (Theta hat) without phase tracking');
+
+
+figure, plot(theta_hat_pt(1:20:256, :)')
+title('Estimation of theta (Theta hat) with phase tracking');
 
 
 %% Demap
